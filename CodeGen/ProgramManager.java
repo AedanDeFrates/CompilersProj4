@@ -1,6 +1,7 @@
 package CodeGen;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 
 // This class creates and manages the Program and Emitter objects
@@ -17,7 +18,25 @@ public class ProgramManager {
         this.emitter = new Emitter.ProgramEmitter(program.globals,program.funcs);
     }
 
-    public void printProgram(){
+    public void printGOTOProgram(){
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("Globals ");
+        String globals = program.globals.stream()
+                .map(var -> "var " + var.type + " " + var.name)
+                .collect(Collectors.joining(",\n   ", "{\n   ", "\n}\n"));
+        sb.append(globals);
+
+        sb.append("Funcs ");
+        String funcs = program.funcs.stream()
+                .map(func -> "fun " + func.returntype + " " + func.name)
+                .collect(Collectors.joining(",\n   ", "{\n   ", "\n}\n"));
+        sb.append(funcs);
+
+        System.out.println(sb);
+    }
+
+    public void printCProgram(){
         String programText = emitter.emitProgram();
         System.out.println(programText);
     }

@@ -61,8 +61,19 @@ public class Main {
             GlobalVariablePass gvp = new GlobalVariablePass(pp,scp.globalscope);
             asttree.accept(gvp);
 
-            System.out.println("\n==========PROGRAM==========");
-            pp.printProgram();
+            System.out.println("\n==========CREATE_FUNC_PASS==========");
+            CreateFuncPass cfp = new CreateFuncPass(pp,scp.globalscope);
+            asttree.accept(cfp);
+
+            System.out.println("\n==========GOTO_PROGRAM==========");
+            pp.printGOTOProgram();
+
+            System.out.println("\n==========INSTRUCTIONS_PASS==========");
+            InstructionsPass ip = new InstructionsPass(pp,scp.globalscope);
+            asttree.accept(ip);
+
+            System.out.println("\n==========C_PROGRAM==========");
+            pp.printCProgram();
 
 
         } catch (TypeCheckException e) {

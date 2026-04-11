@@ -1,0 +1,223 @@
+package CodeGen;
+
+import Absyn.*;
+import Absyn.BinOp;
+import Absyn.ReturnStmt;
+import Typecheck.SymbolTable.Scope;
+
+//This pass creates all the functions and their instructions in the GOTO ir
+public class InstructionsPass extends CodeGenPass<Object>{
+
+    Function currentFunc;
+
+    public InstructionsPass(ProgramManager p, Scope s) {
+        super(p, s);
+    }
+
+    /*
+    ALL GOTO nodes:
+        1. Var - created in GlobalScopePass, need for assignments, use ID
+        2. Literal - Int or String Literal, use DeclLit and StrLit
+        3. BinOp - use BinaryOp
+        4. UnaryOp - use UnaryOp
+        5. Assign - use VarDecl and AssignExp
+        6. ReturnStmt - use ReturnStmt
+        7. Call - use FunExp
+        8. ArrayLoad - read array value, use ?
+        9. ArrayStore - use ?
+        10. ArrayAlloc - change size of array, use
+        11. IfStmt - need goto for control, use IfStmt
+        12. GotoStmt - use IfStmt and WhileStmt
+        13. Label - create labels for gotos, use IfStmt and WhileStmt
+        14. Printf - use ?
+
+     All GOTO Intructions: need to be added to their respective function using addInst()
+        - Printf
+        - Call (maybe)
+        - Assign
+        - ArrayStore
+        - ArrayAllocation
+        - If
+        - Goto
+        - Return
+     */
+
+    //adds instruction to the current function
+    void addInst(GOTO inst){
+        if(inst==null){
+            throw new RuntimeException("Cannot add null instruction to function");
+        }
+        if(currentFunc==null){
+            throw new RuntimeException("Cannot add instruction in global scope. Function switching may not be working correctly.");
+        }
+        currentFunc.instr.add(inst);
+    }
+
+    // returns a Var from the program given its original name
+    Var findVar(String name){
+        String uniqueName = pm.varNameTranslator.get(name);
+
+        Var var = null;
+        for(Var v : pm.program.globals){
+            if(v.name.equals(uniqueName)){
+                var = v;
+            }
+        }
+
+        if(var==null){
+            throw new RuntimeException(
+                    String.format("Can't find var %s with unique name %s in program",name,uniqueName)
+            );
+        }
+
+        return var;
+    }
+
+    // returns a Function from the program given its name
+    Function findFunc(String name){
+        Function func = null;
+        for(Function f : pm.program.funcs){
+            if(f.name.equals(name)){
+                func = f;
+            }
+        }
+
+        if(func==null){
+            throw new RuntimeException(
+                    String.format("Can't find func %s in program",name)
+            );
+        }
+
+        return func;
+    }
+
+    // IDs can be for variables, functions, or types
+    // Returns Var if for a variable, nothing if for a function
+    @Override
+    public Object visitID(ID node) {
+        System.out.println("INSTRUCTION_PASS visitID\n   " + node.value);
+        try {
+            return findVar(node.value);
+        }
+        catch (RuntimeException e) {
+
+               if(currentscope.hasFun(node.value))
+                   return null; //findFunc(node.value);
+               else throw e;
+        }
+    }
+
+    // Sets function as current function, visits children,
+    // then restores current function
+    @Override
+    public Object visitFunDecl(FunDecl node) {
+
+        System.out.println("INSTRUCTION_PASS visitFunDecl\n   " + node.name);
+        switchScope(node,()->{
+            Function func =  findFunc(node.name);
+
+            Function prevFunc = currentFunc;
+            currentFunc = func;
+
+            visit(node.type);
+            visit(node.params);
+            visit(node.body);
+
+            currentFunc = prevFunc;
+        });
+        return null;
+    }
+
+    @Override
+    public Object visitDecLit(DecLit node) {
+        System.out.println("INSTRUCTION_PASS visitDecLit\n   " + node.value);
+        Literal lit = new Literal(node.value,Type.INT);
+        return lit;
+    }
+
+    @Override
+    public Object visitStrLit(StrLit node) {
+        System.out.println("INSTRUCTION_PASS visitStrLit\n   " + node.value);
+        Literal lit = new Literal(node.value,Type.STRING);
+        return lit;
+    }
+
+    @Override
+    public Object visitBinOp(BinOp node) {
+        System.out.println("INSTRUCTION_PASS visitBinaryOp\n   " + node.oper);
+        IRExpr left = (IRExpr)visit(node.left);
+        String op = node.oper;
+        IRExpr right = (IRExpr)visit(node.right);
+        CodeGen.BinOp bin = new CodeGen.BinOp(op,left,right,Type.INT);
+        return bin;
+    }
+
+    @Override
+    public Object visitUnaryExp(UnaryExp node) {
+        System.out.println("INSTRUCTION_PASS visitUnaryOp\n   " + node.prefix);
+        String pre = node.prefix;
+        IRExpr exp = (IRExpr)visit(node.exp);
+        CodeGen.UnaryOp un = new CodeGen.UnaryOp(pre,exp,Type.INT);
+        return un;
+    }
+
+    @Override
+    public Object visitVarDecl(VarDecl node) {
+        System.out.println("INSTRUCTION_PASS visitVarDecl\n   " + node.name);
+        Var var = findVar(node.name);
+        IRExpr init = (IRExpr)visit(node.init);
+
+        //no initialization = no assignment instr
+        if(init==null){
+            return null;
+        }
+
+        Assign assign = new Assign(var,init);
+
+
+        if(currentFunc!=null){
+            addInst(assign);
+            return assign;
+        }
+
+        // currentFunc==null, means in global scope,
+        // variables will be declared but not initialized in global scope,
+        // instead assign instructs will be put in main()
+        try{
+            currentFunc = findFunc("main");
+            addInst(assign);
+            currentFunc = null;
+            return assign;
+
+        } catch (RuntimeException e) {
+            throw new RuntimeException("Program missing main() function");
+        }
+    }
+
+    @Override
+    public Object visitAssignExp(AssignExp node) {
+        System.out.println("INSTRUCTION_PASS visitAssignExp\n   " + "assign");
+        // for now assume visit(node.left) will always return a Var,
+        // in theory compiler should be enforcing this beforehand
+        // but this has not been tested and checks may be necessary
+        Var var =  (Var)visit(node.left);
+        IRExpr exp = (IRExpr)visit(node.right);
+
+
+        Assign assign = new Assign(var,exp);
+        addInst(assign);
+
+        return assign;
+    }
+
+    @Override
+    public Object visitReturnStmt(ReturnStmt node) {
+        System.out.println("INSTRUCTION_PASS visitFunDecl\n   " + node.expression);
+        IRExpr value = (IRExpr)visit(node.expression);
+        CodeGen.ReturnStmt re = new CodeGen.ReturnStmt(value);
+        addInst(re);
+        return re;
+    }
+
+
+}
