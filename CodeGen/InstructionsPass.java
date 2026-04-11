@@ -22,24 +22,33 @@ public class InstructionsPass extends CodeGenPass<Object>{
         4. UnaryOp - use UnaryOp
         5. Assign - use VarDecl and AssignExp
         6. ReturnStmt - use ReturnStmt
-        7. Call - use FunExp
-        8. ArrayLoad - read array value, use ?
-        9. ArrayStore - use ?
-        10. ArrayAlloc - change size of array, use
-        11. IfStmt - need goto for control, use IfStmt
-        12. GotoStmt - use IfStmt and WhileStmt
-        13. Label - create labels for gotos, use IfStmt and WhileStmt
-        14. Printf - use ?
+        7. Call - use ExprStmt and FunExp
+        8. IfStmt - need goto for control, use IfStmt
+        9. GotoStmt - implement ifs and loops, use IfStmt and WhileStmt
+        10. Label - create labels for gotos, use IfStmt and WhileStmt
+        11. ArrayLoad - read array value, use ?
+        12. ArrayStore - use ?
+        13. ArrayAlloc - change size of array, use
+        14. Builtin - typecheck add builtins to globalscope, ignore in CreateFuncPass, use FunDecl
 
-     All GOTO Intructions: need to be added to their respective function using addInst()
-        - Printf
-        - Call (maybe)
+     All GOTO Instructions: need to be added to their respective function using addInst()
+        - Builtin
+        - Call (if ExprStmt)
         - Assign
         - ArrayStore
         - ArrayAllocation
         - If
         - Goto
         - Return
+     */
+
+
+    /*
+    While loop in
+    label1: if(condition){
+                statement...
+                GOTO label
+            }
      */
 
     //adds instruction to the current function
@@ -167,13 +176,12 @@ public class InstructionsPass extends CodeGenPass<Object>{
         Var var = findVar(node.name);
         IRExpr init = (IRExpr)visit(node.init);
 
-        //no initialization = no assignment instr
+        //no initialization = no assignment instr needed
         if(init==null){
             return null;
         }
 
         Assign assign = new Assign(var,init);
-
 
         if(currentFunc!=null){
             addInst(assign);
@@ -181,12 +189,14 @@ public class InstructionsPass extends CodeGenPass<Object>{
         }
 
         // currentFunc==null, means in global scope,
-        // variables will be declared but not initialized in global scope,
-        // instead assign instructs will be put in main()
         try{
+            // global variables can be declared in global scope,
+            // but in C they may not be able to be initialized
+            // to be safe initial assignments will be put at top of main()
             currentFunc = findFunc("main");
             addInst(assign);
             currentFunc = null;
+
             return assign;
 
         } catch (RuntimeException e) {
