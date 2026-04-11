@@ -128,7 +128,7 @@ public class Emitter {
         }
 
         @Override
-        public String visitGoto(Goto instr) {
+        public String visitGoto(GotoStmt instr) {
             return String.format("goto %s;",
                                  instr.label);
         }

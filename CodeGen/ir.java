@@ -2,6 +2,7 @@ package CodeGen;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
 
 /**
  * Type system for the IR.
@@ -102,6 +103,7 @@ class Program {
         this.unique_label_counter = 0;
         this.globals = new ArrayList<>();
         this.funcs = new ArrayList<>();
+
     }
 
     public String getUniqueVarName() {
@@ -111,6 +113,16 @@ class Program {
     public String getUniqueLabelName() {
         return "LABEL"+(++this.unique_label_counter);
     }
+
+    @Override
+    public String toString(){
+        StringBuilder sb = new StringBuilder("Program\n");
+        sb.append("\tGlobals:");
+        sb.append(globals.toString());
+        sb.append("\n");
+        return sb.toString();
+    }
+
 }
 
 /**
@@ -431,10 +443,10 @@ class IfStmt extends IRStmt {
  * Example emitted C:
  * goto LABEL;
  */
-class Goto extends IRStmt {
+class GotoStmt extends IRStmt {
     public final String label;
 
-    public Goto(String label) { 
+    public GotoStmt(String label) {
         this.label = label; 
     }
 

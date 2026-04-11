@@ -4,6 +4,7 @@ import Parse.antlr_build.Parse.*;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 import Typecheck.Pass.*;
+import CodeGen.*;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -21,7 +22,8 @@ public class Main {
         ASTBuilder astBuilder = new ASTBuilder();
 
         Absyn.DeclList asttree = (Absyn.DeclList)astBuilder.visit(tree);
-        //System.out.println(asttree.print(0));
+        System.out.println("\n==========AST==========");
+        System.out.println(asttree.print(0));
 
         try {
             // Passes
@@ -44,16 +46,28 @@ public class Main {
             System.out.println("\n==========PRINT_PASS==========");
             System.out.print("Global Scope ");
             System.out.println(scp.globalscope);
-            PrintPass pp = new PrintPass(scp.globalscope);
-            asttree.accept(pp);
+            PrintPass print = new PrintPass(scp.globalscope);
+            asttree.accept(print);
 
             System.out.println("\n==========JUDGEMENT_PASS==========");
             JudgementsPass jp = new JudgementsPass(scp.globalscope);
             asttree.accept(jp);
-
             System.out.println("Type Check Passed!");
+
+            //=================CODEGEN=================
+            ProgramManager pp = new ProgramManager();
+
+            System.out.println("\n==========GLOBAL_VARIABLE_PASS==========");
+            GlobalVariablePass gvp = new GlobalVariablePass(pp,scp.globalscope);
+            asttree.accept(gvp);
+
+            System.out.println("\n==========PROGRAM==========");
+            pp.printProgram();
+
+
         } catch (TypeCheckException e) {
             System.err.println("TypeCheckError: " + e.getMessage());
         }
+
     }
 }
