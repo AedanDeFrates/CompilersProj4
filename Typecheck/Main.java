@@ -5,6 +5,7 @@ import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 import Typecheck.Pass.*;
 import CodeGen.*;
+import java.io.FileWriter;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -55,26 +56,32 @@ public class Main {
             System.out.println("Type Check Passed!");
 
             //=================CODEGEN=================
-            ProgramManager pp = new ProgramManager();
+            ProgramManager pm = new ProgramManager();
 
             System.out.println("\n==========GLOBAL_VARIABLE_PASS==========");
-            GlobalVariablePass gvp = new GlobalVariablePass(pp,scp.globalscope);
+            GlobalVariablePass gvp = new GlobalVariablePass(pm,scp.globalscope);
             asttree.accept(gvp);
 
             System.out.println("\n==========CREATE_FUNC_PASS==========");
-            CreateFuncPass cfp = new CreateFuncPass(pp,scp.globalscope);
+            CreateFuncPass cfp = new CreateFuncPass(pm,scp.globalscope);
             asttree.accept(cfp);
 
             System.out.println("\n==========GOTO_PROGRAM==========");
-            pp.printGOTOProgram();
+            System.out.println(pm.outputGOTOProgram());
 
             System.out.println("\n==========INSTRUCTIONS_PASS==========");
-            InstructionsPass ip = new InstructionsPass(pp,scp.globalscope);
+            InstructionsPass ip = new InstructionsPass(pm,scp.globalscope);
             asttree.accept(ip);
 
             System.out.println("\n==========C_PROGRAM==========");
-            pp.printCProgram();
+            String cText = pm.outputCProgram();
+            System.out.println(cText);
 
+            //Create a C file
+            pm.writeCProgram(args[0]);
+
+            // run.sh will call gcc compiler after this
+            // to compile the C code into an executable
 
         } catch (TypeCheckException e) {
             System.err.println("TypeCheckError: " + e.getMessage());

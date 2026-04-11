@@ -1,5 +1,5 @@
 package CodeGen;
-import java.util.ArrayList;
+import java.io.FileWriter;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
@@ -18,7 +18,7 @@ public class ProgramManager {
         this.emitter = new Emitter.ProgramEmitter(program.globals,program.funcs);
     }
 
-    public void printGOTOProgram(){
+    public String outputGOTOProgram(){
         StringBuilder sb = new StringBuilder();
 
         sb.append("Globals ");
@@ -33,12 +33,25 @@ public class ProgramManager {
                 .collect(Collectors.joining(",\n   ", "{\n   ", "\n}\n"));
         sb.append(funcs);
 
-        System.out.println(sb);
+        return sb.toString();
     }
 
-    public void printCProgram(){
-        String programText = emitter.emitProgram();
-        System.out.println(programText);
+    public String outputCProgram(){
+        return emitter.emitProgram();
+
+    }
+
+
+    // Create C file FileName.C with generated C code
+    // Takes in FileName.g
+    public void writeCProgram(String geauxFileName){
+        String fileName = geauxFileName.replaceFirst("[.][^.]+$", "") + ".c";
+
+        try(FileWriter fw = new FileWriter(fileName,false)){
+            fw.write(outputCProgram());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

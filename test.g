@@ -1,4 +1,4 @@
-var int test = 67;
+//var int test = 67;
 
 fun int main(){
     var int x = 0;
