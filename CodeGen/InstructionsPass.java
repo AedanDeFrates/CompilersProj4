@@ -3,6 +3,8 @@ package CodeGen;
 import Absyn.*;
 import Absyn.BinOp;
 import Absyn.ReturnStmt;
+import Absyn.IfStmt;
+import Absyn.WhileStmt;
 import Typecheck.SymbolTable.Scope;
 
 //This pass creates all the functions and their instructions in the GOTO ir
@@ -44,11 +46,12 @@ public class InstructionsPass extends CodeGenPass<Object>{
 
 
     /*
-    While loop in
-    label1: if(condition){
-                statement...
-                GOTO label
-            }
+    While loop in GOTO
+    label1:
+    if(condition){
+        statement...
+        GOTO label1;
+    }
      */
 
     //adds instruction to the current function
@@ -229,5 +232,24 @@ public class InstructionsPass extends CodeGenPass<Object>{
         return re;
     }
 
+    @Override
+    public Object visitIfStmt(IfStmt node) {
+        return super.visitIfStmt(node);
+    }
 
+    @Override
+    public Object visitWhileStmt(WhileStmt node) {
+        return super.visitWhileStmt(node);
+    }
+
+    @Override
+    public Object visitExprStmt(ExprStmt node) {
+        GOTO exp = (GOTO)visit(node.expression);
+        return super.visitExprStmt(node);
+    }
+
+    @Override
+    public Object visitFunExp(FunExp node) {
+        return super.visitFunExp(node);
+    }
 }

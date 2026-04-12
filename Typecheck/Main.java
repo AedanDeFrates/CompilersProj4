@@ -5,12 +5,14 @@ import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 import Typecheck.Pass.*;
 import CodeGen.*;
-import java.io.FileWriter;
+import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) throws Exception {
+        System.out.println("GEAUX Compiling...");
         CharStream input = CharStreams.fromFileName(args[0]);
 
+        System.out.println("Starting Lexer");
         gLexer lexer = new gLexer(input);
 
         CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -77,15 +79,24 @@ public class Main {
             String cText = pm.outputCProgram();
             System.out.println(cText);
 
-            //Create a C file
-            pm.writeCProgram(args[0]);
 
-            // run.sh will call gcc compiler after this
-            // to compile the C code into an executable
+            String fileName = args[0].replaceFirst("[.][^.]+$", "");
+            //Create and write a C file
+            pm.writeCProgram(fileName);
+
+            System.out.println("Compiling with gcc...");
+
+            // Compile C file to executable
+            // calls gcc on command line
+            pm.compileCProgram(fileName);
+
+            System.out.printf("Executable %s created. Use ./%s to run\n",fileName,fileName);
+
 
         } catch (TypeCheckException e) {
             System.err.println("TypeCheckError: " + e.getMessage());
         }
+
 
     }
 }

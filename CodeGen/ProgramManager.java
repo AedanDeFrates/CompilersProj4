@@ -30,7 +30,7 @@ public class ProgramManager {
         sb.append("Funcs ");
         String funcs = program.funcs.stream()
                 .map(func -> "fun " + func.returntype + " " + func.name)
-                .collect(Collectors.joining(",\n   ", "{\n   ", "\n}\n"));
+                .collect(Collectors.joining(",\n   ", "{\n   ", "\n}"));
         sb.append(funcs);
 
         return sb.toString();
@@ -41,15 +41,25 @@ public class ProgramManager {
 
     }
 
-
-    // Create C file FileName.C with generated C code
-    // Takes in FileName.g
-    public void writeCProgram(String geauxFileName){
-        String fileName = geauxFileName.replaceFirst("[.][^.]+$", "") + ".c";
-
-        try(FileWriter fw = new FileWriter(fileName,false)){
+    // Create C file fileName.C with generated C code
+    // Takes in fileName with no extension
+    public void writeCProgram(String fileName){
+        try(FileWriter fw = new FileWriter(fileName+".c",false)){
             fw.write(outputCProgram());
         } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // Compiles C file to executable, calls gcc on command line
+    public void compileCProgram(String fileName){
+        try {
+
+            ProcessBuilder pb = new ProcessBuilder("gcc", fileName + ".c", "-o", fileName);
+            Process process = pb.start();
+            process.waitFor();
+
+        }catch (Exception e){
             throw new RuntimeException(e);
         }
     }
