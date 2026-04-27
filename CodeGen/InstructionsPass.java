@@ -4,7 +4,6 @@ import Absyn.*;
 import Absyn.BinOp;
 import Absyn.ReturnStmt;
 import Absyn.IfStmt;
-import Absyn.WhileStmt;
 import Typecheck.SymbolTable.Scope;
 
 //This pass creates all the functions and their instructions in the GOTO ir
@@ -234,12 +233,56 @@ public class InstructionsPass extends CodeGenPass<Object>{
 
     @Override
     public Object visitIfStmt(IfStmt node) {
-        return super.visitIfStmt(node);
+        System.out.println("INSTRUCTION_PASS visitIfStmt\n   " + "if statement");
+        
+        // Lower the condition expression to an IRExpr
+        IRExpr cond = (IRExpr) visit(node.expression);
+        
+        String trueLabel = "TRUE_" + pm.program.getUniqueLabelName();
+        String falseLabel = "FALSE_" + pm.program.getUniqueLabelName();
+        String endLabel = "END_" + pm.program.getUniqueLabelName();
+        
+        CodeGen.IfStmt is = new CodeGen.IfStmt(cond, trueLabel, falseLabel);
+        addInst(is);
+        
+        // add True branch
+        addInst(new Label(trueLabel));
+        visit(node.if_statement);
+        addInst(new GotoStmt(endLabel));
+        
+        // add False branch (else)
+        addInst(new Label(falseLabel));
+        if (node.else_statement != null) {
+            visit(node.else_statement);
+        }
+        addInst(new Label(endLabel));
+        
+        return null;
     }
 
     @Override
     public Object visitWhileStmt(WhileStmt node) {
-        return super.visitWhileStmt(node);
+        System.out.println("INSTRUCTION_PASS visitWhileStmt\n   " + "while statement");
+        
+        IRExpr cond = (IRExpr) visit(node.expression);
+
+        String startLabel = "START_" + pm.program.getUniqueLabelName();
+        String bodyLabel = "BODY_" + pm.program.getUniqueLabelName();
+        String endLabel = "END_" + pm.program.getUniqueLabelName();
+
+        addInst(new Label(startLabel));
+
+        CodeGen.IfStmt is = new CodeGen.IfStmt(cond, bodyLabel, endLabel);
+        addInst(is);
+        
+        addInst(new Label(bodyLabel));
+        visit(node.statement);
+        
+        addInst(new GotoStmt(startLabel));
+        
+        addInst(new Label(endLabel));
+        
+        return null;
     }
 
     @Override
