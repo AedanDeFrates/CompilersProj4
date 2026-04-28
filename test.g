@@ -1,9 +1,23 @@
-//var int test = 67;
+var int[3][3] b = {{1,2,3},{1,2,3}, {2, 2, 1}};
+union ms { string x; int[] y; }
 
-fun int main(){
-    var int x = 0;
-    var string s = "Hello World!";
-    //var int[] arr;
-    x = x + 1;
-    return x;
+typedef int A;
+var ms n = "1"; 
+var ms m = {1,1}; 
+var A x = 2;
+
+
+fun int main(ms n) {
+   var int z;
+   return x;
+
+   if (z < 5) {
+       return z;
+   } else {
+       return 1;
+   }
+
+   while (z < 0) {
+       z = z + 1;
+   }
 }
