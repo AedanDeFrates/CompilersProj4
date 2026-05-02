@@ -1,23 +1,9 @@
-var int[3][3] b = {{1,2,3},{1,2,3}, {2, 2, 1}};
-union ms { string x; int[] y; }
+fun int num() {
+    return 42;
+}
 
-typedef int A;
-var ms n = "1"; 
-var ms m = {1,1}; 
-var A x = 2;
-
-
-fun int main(ms n) {
-   var int z;
-   return x;
-
-   if (z < 5) {
-       return z;
-   } else {
-       return 1;
-   }
-
-   while (z < 0) {
-       z = z + 1;
-   }
+fun int main() {
+    var int x = num() + 4;
+    printf("%d\n", x);
+    return 0;
 }

@@ -2,7 +2,6 @@ package CodeGen;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashMap;
 
 /**
  * Type system for the IR.
@@ -313,6 +312,20 @@ class Call extends IRExpr {
     @Override
     public <T> T accept(Visitor<T> v) {
         return v.visitCall(this);
+    }
+}
+class FunStmt extends IRStmt{
+    public final String func;
+
+    public FunStmt(String func)
+    {
+        this.func = func;
+    }
+
+    @Override
+    public <T> T accept(Visitor<T> v)
+    {
+        return v.visitFunStmt(this);
     }
 }
 

@@ -1,5 +1,8 @@
 package CodeGen;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import Absyn.*;
 import Absyn.BinOp;
 import Absyn.ReturnStmt;
@@ -263,7 +266,7 @@ public class InstructionsPass extends CodeGenPass<Object>{
     @Override
     public Object visitWhileStmt(WhileStmt node) {
         System.out.println("INSTRUCTION_PASS visitWhileStmt\n   " + "while statement");
-        
+
         IRExpr cond = (IRExpr) visit(node.expression);
 
         String startLabel = "START_" + pm.program.getUniqueLabelName();
@@ -287,12 +290,46 @@ public class InstructionsPass extends CodeGenPass<Object>{
 
     @Override
     public Object visitExprStmt(ExprStmt node) {
-        GOTO exp = (GOTO)visit(node.expression);
-        return super.visitExprStmt(node);
+        System.out.println("INSTRUCTION_PASS visitExprStmt\n   " + "expression statement");
+
+        Object result = visit(node.expression);
+        
+        if (result instanceof Call) {
+            FunStmt fs = new FunStmt(((Call) result).func);
+            addInst(fs);
+        }
+        else if (result instanceof IRStmt) {
+            addInst((IRStmt) result);
+        }
+        return result;
     }
+
 
     @Override
     public Object visitFunExp(FunExp node) {
-        return super.visitFunExp(node);
+        System.out.println("INSTRUCTION_PASS visitFunExp\n   " + "function call");
+    
+        String name = ((ID) node.name).value;
+    
+        if ("printf".equals(name)) 
+        {   
+            IRExpr formatExpr = (IRExpr) visit(node.params.list.get(0));
+            String format = (String) ((Literal) formatExpr).value;
+
+            List<IRExpr> args = new ArrayList<>();
+            for (int i = 1; i < node.params.list.size(); i++)
+            {
+                args.add((IRExpr) visit(node.params.list.get(i)));
+            }
+            
+            return new Printf(format, args);
+        }
+        else
+        {
+            Type returnType = Type.INT;
+            Call c = new Call(name, returnType);
+
+            return c;
+        }
     }
 }
