@@ -182,9 +182,31 @@ class Printf extends Builtin {
  * Remember, the idea is that Geaux should have a simple "readfromfile("file")"
  * function, and the Emitter turns that into C that actually reads from the file.
  */
-class ReadFromFile extends Builtin {}
-class WriteToFile extends Builtin {}
-class Input extends Builtin {}
+class Input extends Builtin {
+    public final Var result;
+    public Input(Var result) { this.result = result; }
+    @Override public <T> T accept(Visitor<T> v) { return v.visitInput(this); }
+}
+
+class ReadFromFile extends Builtin {
+    public final Var result;
+    public final IRExpr filename;
+    public ReadFromFile(Var result, IRExpr filename) {
+        this.result = result;
+        this.filename = filename;
+    }
+    @Override public <T> T accept(Visitor<T> v) { return v.visitReadFromFile(this); }
+}
+
+class WriteToFile extends Builtin {
+    public final IRExpr filename;
+    public final IRExpr content;
+    public WriteToFile(IRExpr filename, IRExpr content) {
+        this.filename = filename;
+        this.content = content;
+    }
+    @Override public <T> T accept(Visitor<T> v) { return v.visitWriteToFile(this); }
+}
 
 /**
  * Variable reference.

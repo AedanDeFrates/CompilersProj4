@@ -56,7 +56,7 @@ public class Emitter {
         public String visitLiteral(Literal instr) {
             switch (instr.type) {
                 case INT -> { return instr.value.toString(); }
-                case STRING -> { return "\"" + instr.value.toString() + "\""; }
+                case STRING -> { return "\"" + toCString(instr.value.toString()) + "\""; }
                 default -> throw new RuntimeException("Unsupported literal type: " + instr.type);
             }
         }
@@ -151,6 +151,29 @@ public class Emitter {
         public String visitReturnStmt(ReturnStmt instr) {
             return String.format("return %s;",
                                  visit(instr.value));
+        }
+
+        @Override
+        public String visitInput(Input instr) {
+            return String.format("scanf(\"%%d\", &%s);", instr.result.name);
+        }
+
+        @Override
+        public String visitReadFromFile(ReadFromFile instr) {
+            String res = instr.result.name;
+            String fname = visit(instr.filename);
+            return String.format(
+                "%s = malloc(4096);\n{ FILE* _f = fopen(%s, \"r\"); if(_f){ fgets(%s, 4096, _f); fclose(_f); } }",
+                res, fname, res);
+        }
+
+        @Override
+        public String visitWriteToFile(WriteToFile instr) {
+            String fname = visit(instr.filename);
+            String content = visit(instr.content);
+            return String.format(
+                "{ FILE* _f = fopen(%s, \"w\"); if(_f){ fputs(%s, _f); fclose(_f); } }",
+                fname, content);
         }
 
         public String visitPrintf(Printf instr) {

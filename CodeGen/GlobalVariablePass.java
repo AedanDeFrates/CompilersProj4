@@ -13,6 +13,8 @@ import java.util.HashMap;
 // using Program.getUniqueVarName()
 public class GlobalVariablePass extends CodeGenPass<Void>{
 
+    private String currentFuncName = null;
+
     public GlobalVariablePass(ProgramManager p, Scope s) {
         super(p, s);
     }
@@ -49,18 +51,50 @@ public class GlobalVariablePass extends CodeGenPass<Void>{
 
 
     @Override
-    public Void visitVarDecl(VarDecl node){
+    public Void visitFunDecl(FunDecl node) {
+        System.out.println("GLOBAL_VARIABLE_PASS visitFunDecl\n   " + node.name);
+        String prevFuncName = currentFuncName;
+        currentFuncName = node.name;
+        pm.funcParamVarNames.put(node.name, new ArrayList<>());
 
+        switchScope(node, () -> {
+            visit(node.type);
+            visit(node.params);
+            visit(node.body);
+        });
+
+        currentFuncName = prevFuncName;
+        return null;
+    }
+
+    @Override
+    public Void visitVarDecl(VarDecl node){
         System.out.println("GLOBAL_VARIABLE_PASS visitVarDecl\n   " + node.name);
-        createGOTOVar(node.name,node.type.typeAnnotation);
+        createGOTOVar(node.name, node.type.typeAnnotation);
+
+        CodeGen.Type gotoType = getGOTOType(node.type.typeAnnotation);
+        if (gotoType == Type.INTARRAY) {
+            String uniqueArrayName = pm.varNameTranslator.get(node.name);
+            String sizeVarName = pm.program.getUniqueVarName();
+            CodeGen.Var sizeVar = new Var(sizeVarName, Type.INT);
+            pm.program.globals.add(sizeVar);
+            pm.arraySizeVarNames.put(uniqueArrayName, sizeVarName);
+        }
+
         return null;
     }
 
     @Override
     public Void visitParameter(Parameter node){
-
         System.out.println("GLOBAL_VARIABLE_PASS visitParameter\n   " + node.name);
-        createGOTOVar(node.name,node.type.typeAnnotation);
+        createGOTOVar(node.name, node.type.typeAnnotation);
+
+        // Track this param's unique name for the current function
+        String uniqueName = pm.varNameTranslator.get(node.name);
+        if (currentFuncName != null && pm.funcParamVarNames.containsKey(currentFuncName)) {
+            pm.funcParamVarNames.get(currentFuncName).add(uniqueName);
+        }
+
         return null;
     }
 

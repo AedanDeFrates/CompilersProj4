@@ -4,7 +4,10 @@ import Parse.antlr_build.Parse.*;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 import Typecheck.Pass.*;
+import Typecheck.SymbolTable.FunSymbol;
+import Typecheck.Types.*;
 import CodeGen.*;
+import java.util.ArrayList;
 import java.io.IOException;
 
 public class Main {
@@ -37,6 +40,16 @@ public class Main {
             System.out.println("\n==========SCOPE_PASS==========");
             CreateScopePass scp = new CreateScopePass();
             asttree.accept(scp);
+
+            // Register builtin functions in global scope
+            scp.globalscope.addFun("printf", new FunSymbol("printf",
+                new LIST(new ArrayList<>(java.util.List.of(new STRING()))), new INT()));
+            scp.globalscope.addFun("input", new FunSymbol("input",
+                new LIST(new ArrayList<>()), new INT()));
+            scp.globalscope.addFun("readFromFile", new FunSymbol("readFromFile",
+                new LIST(new ArrayList<>(java.util.List.of(new STRING()))), new STRING()));
+            scp.globalscope.addFun("writeToFile", new FunSymbol("writeToFile",
+                new LIST(new ArrayList<>(java.util.List.of(new STRING(), new STRING()))), new INT()));
 
             System.out.println("\n==========TYPE_SCOPE_PASS==========");
             TypeScopePass tcp = new TypeScopePass(scp.globalscope);
