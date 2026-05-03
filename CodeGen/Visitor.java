@@ -17,6 +17,8 @@ public interface Visitor<T> {
     T visitPrintf(Printf instr);
     T visitGOTO(GOTO instr);
 
+    T visitFunStmt(FunStmt instr);
+
 
 	default T visit(GOTO node) {
 		return node.accept(this);

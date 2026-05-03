@@ -84,6 +84,14 @@ public class Emitter {
         }
 
         @Override
+        public String visitFunStmt(FunStmt instr)
+        {
+            String ret = instr.func + "();";
+            return ret;
+        }
+
+
+        @Override
         public String visitArrayLoad(ArrayLoad instr) {
             return String.format("*(%s+%s)",
                                  visit(instr.array),
@@ -147,12 +155,19 @@ public class Emitter {
 
         public String visitPrintf(Printf instr) {
             StringBuilder sb = new StringBuilder();
-            sb.append("printf(\"").append(instr.format).append("\"");
+
+            sb.append("printf(\"").append(toCString(instr.format)).append("\"");
+
             for (IRExpr arg : instr.args) {
                 sb.append(", ").append(visit(arg));
             }
             sb.append(");");
             return sb.toString();
+        }
+
+        private String toCString(String s) 
+        {
+            return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\t", "\\t").replace("\r", "\\r");
         }
 
     }

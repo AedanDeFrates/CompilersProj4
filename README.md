@@ -1,10 +1,11 @@
 
-# ***CompilersProj3 - Semantic Analysis***
-4/9/2026
+
+# ***CompilersProj4 - Code Generation***
+4/30/2026
 
 Written by Joshua Walther
 
-[GitHub Repo Link](https://github.com/AedanDeFrates/CompilersProj3)
+[GitHub Repo Link](https://github.com/AedanDeFrates/CompilersProj4)
 
 ### Group Members
 
@@ -14,96 +15,80 @@ Written by Joshua Walther
 - Joshua Walther
 
 ## Theory
-For this project we are implementing the semantic analysis of our compiler, taking the AST from the parser and creating an annotated, type-checked AST that is verified to be correct based on our typing rules.
+For this project we are implementing the code generation of our compiler, taking the annotated, type-checked AST from the semantic analysis and lowering it to an intermediate representation closer to C, before emitting the corresponding C code, and compiling it with GCC. At this point the compiler works fully, taking a `fileName.g` Geaux file, performing lexical, syntactic, and semantic analysis, transpiling it C, and compiling it into an executable.
 
-### What is  Semantic Analysis?
-Semantic Analysis is the process of verifying the correctness of the our program's meaning, checking if types, operations, and scope are both correct and compatible with each other. Variables types are enforced for assignment and operations, and scope of variables is managed to make sure variable, function, and type names exist and without conflicts. The compiler will throw errors if there are any violations of the typing and semantic rules.
+### What is Code Generation?
+Code Generation is the process of translating the intermediate representation of our program into instructions for the machine to run. To make this easier, we can avoid writing our own compiler backend and optimization by instead generating C code from our program and compiling that with an existing compiler like GCC. Our code generation then will happen in three steps, lowering, emitting, and compiling.
+
+1. Lowering - lowers our current intermediate representation, an AST, to one closer to actual C code.
+
+2. Emitting -  takes our lowered IR and uses it to emit a corresponding C program file.
+
+3. Compiling - leverages an existing C compiler like GCC to compile our code to an executable.
 
 
 ## How to run our project
-To run our type checker, use the provided shell script and test files.        
-`./run.sh <optional_test_file_name>`
+To run our the code, use the provided shell script and any program file.          
+`./run.sh <optional_file_name.g>`
+
+### PREQUISITE: GCC
+Our shell script will compile the emitted C code file automatically using GCC. This will not function if GCC is not installed
 
 ## Code Implementation
-Because we are still working with the AST again, we will continue to use the Visitor pattern and visitor methods to navigate and work with the tree. In this project we will be implementing Pass classes that traverse the whole tree and perform operations on the tree when visiting specific nodes. These passes will assign types, create and assign scopes, and enforce our typing rules.
+We will again make use of the visitor pattern, and implement passes on the AST to create our lower level IR. Then we will use a pass on the IR to emit C code.
+
+### Lowering
+This is the step that we are implementing. Our lower level IR is GOTO.  A GOTO Program has a list of global variables and functions. It consists only of fourteen prewritten instructions classes.
+
+Instructions:
+1. Var
+2. Literal
+3. BinOp
+4. UnaryOp
+5. Assign
+6. Return
+7. Call
+8. IfStmt
+9. Goto
+10. Label
+11. ArrayLoad
+12. ArrayAllocation
+13. ArrayStore
+14. Builtin
+
+In this IR, all variable declarations will be global, Control flow is implemented with goto statements and labels, and the only types are int, string, and int array.
+
+We created a ProgramManager class to store our GOTO program object and methods using the program emitter.
+
+We decided to use three passes to generate our IR program. Each of these passes extends a common abstract CodeGenPass which extends ScopePass from last project and holds a reference to the ProgramManager so that the passes can access the program.
 
 
-### Symbol Table
-The prewritten symbol table classes define our scopes and symbols contained in them. The scope class maps Var, Func, and Type labels to their underlying types, return types, and parameters. The scope class has a reference to its parent scope, and has methods to lookup symbols and add symbols to scope. We will be attaching scope objects to nodes that have there own scopes, like functions. From there we can add symbols to the scope and check what items are defined in the local or parent scopes.
+#### GlobalVariablePass
+Visits all variables, parameters, struct/union members and adds them as global Vars. Since variables from different scopes can share the same name, we rename all of the Vars to unique names using a counter when assigned globally. We also assign the Var one of the three types based on what GEAUX type it has.
 
-### Type Classes
-The prewritten Type classes define our eight underlying types. Each Type class has an accept method that defines determines if an unknown type is the same as that type. We will assign these types to variables, function parameters and returns, and custom types.
+#### CreateFuncPass
+This pass visits all function declarations and creates the corresponding GOTO Functions and adds them to the GOTO program. Each of these functions holds a list of GOTO instructions that will be added in the next pass
 
-Type Classes:
-- VOID - matches no types, used as function return type
-- INT - numbers
-- STRING - strings
-- ARRAY -  unbounded dynamic arrays
-- LIST -  bounded arrays and structs, with limited size
-- OR - represents a union of multiple types
-- ALLIAS - defines customs types, made up of existing types
-- POINTER - a pointer of another type, counted as number for binary operations
+#### InstructionsPass
+This pass visits the rest of our AST nodes to add instructions to their corresponding functions. It stores a reference to the current Function. When visiting a function it switches the current function, visits its children, and restores the previous function.
 
+Each visit method returns its resulting GOTO object, if one is created, so that they can be retrieved by their parent node. Only statements, those ending in semicolons, need to be added as instructions to the functions, but these statements may be made up of multiple GOTO instructions. An assign statement may be made of multiple binary operations for example.
 
-### Passes
-The Pass classes are what we are implementing for this project. We use visit functions to traverse every type of node in the AST tree and define specific behavior for nodes, like adding types to type definition nodes, and scopes to function nodes. The steps of our type checking are split into multiple passes to improve organize of our code and isolate different functionality. We have six pass classes.
-
-#### TypeAnnotationPass
-This pass visits variable, parameter, and struct and union member nodes and assigns them a corresponding Type object. This means first determining the base type, INT, STRING, VOID, or ALLIAS, and then if applicable creating POINTER, LIST, or ARRAY types iteratively from those base types.
-
-#### CreateScopePass
-This pass visits function, struct, union, if, and while nodes and creates empty local scopes objects, using the current scope as the parent of the new scope. When visiting each node we save the current scope, create a  new current scope with the previous scope as its parent, visit all children nodes, then restore the previous scope as the current. This allows us to reclusively assign scopes to nodes easily.
-
-#### ScopePass
-This is the parent class of the rest of our passes. Like the previous pass. It saves the current scope, switches it to the local scope, then visits all the children nodes, before restoring the previous scope as the current scope. This class makes it easier to implement our other classes and reduce redundant code writing when using multiple passes.
-
-We created a wraper function switchScope which saves scope, runs a provided function, the restores scope. This reduced the copy paste scope switch code.
-
-#### FunAndVarScopePass
-This pass finds functions, variables, and parameters, and adds them to their corresponding local scopes, making sure there are no conflicts
-
-#### TypeScopePass
-This pass finds types, struct, and union declarations and adds them to their local scope
-
-#### PrintPass
-This is a custom print class that prints a string representation of all of the bindings in the local scopes. We implemented toString methods for Scope, Type, and Symbol classes and call this for both the global and local scopes.
-
-#### JudgmentPass
-This is the path that implements the fourteen typing rules when visiting nodes.
-##### Rules:
-1. Numbers and strings will be different values
-2. Number can be assigned to a Pointer of any type, Pointers count as numbers in all but 2 cases (rule 14)
-3. If an Array is initialized, it must be initialized with a list of the correct length
-4. Structs can also be initialized with a list matching the elements of the struct
-5. Unions are initialized with a value that type checks for one of its members
-6. Unions can be assigned to any value that type checks with one of it’s members.
-7. For Arrays without expressions, initalizing list must have consistent dimmensions
-8. Math operations only accept numbers
-9. Function calls must match the parameter types, and evaluates to expression of the return type
-10. All return statements inside the body of function declarations match the return type. (UNIMPLEMENTED)
-11. A variable and a function cannot share the same name in the same scope
-12. Any type T used in the program must be a valid type in the Scope
-13. The conditional in if statements and while statements must be numbers
-14. Unary operations all take numbers and return numbers
-    a. * takes a pointer. It must specifically be a pointer, and *p evaluates to a term that matches the underlying type of the pointer
-    b. & takes any term and evaluates to a pointer of that terms type
-
-We created a few helper functions for most of the rules:
-- `typeOf` - recursively finds the type of any expression node. Most of our rules are implemented here hence the methods size, throws errors for violations. It also avoids the use of the visit methods which is not the ideal solution, however it works ok enough. This function should probably be split amongst different rules and visit methods.
-- `isNumber` - checks if a type is a int or pointer, helpful for making sure conditions and operations take only numbers
-- `matchsListSize` - checks if assignment matches unbounded array dimensions. This was due to the given type acceptance implementation being broken
 
 
 ## Group Strategy and Issues Encountered
 
 ### Group Strategy
-We split the tasks up for this project by creating GitHub issues, and grouping the passes into Steps, Step 1 for type annotation and creating scope, Step 2 for assigning bindings to local scopes, and Step 3 for the judgment pass.
+Since this project utilized the same skills as the last one and given that this project is more open ended than the last one, this project was not nearly as difficult.
 
-We created print statements for every visit function in every pass so that we could clearly see what functions are running in each pass, and if they are the overloaded or inherited methods.
+We decided to split our implementation among three passes. The var and fun passes could probably be combined, and the instruction pass could probably be split, but we found that it organized the code nicely in to separate logical steps.
 
-We also created a new PrintPass class to print out all of the bindings in each scope before the Judgement pass, allowing us to easily debug the passes and help implement the rules. To do this we added/modified toString methods for the Scope, ScopeBucket, Symbol, and Type classes. This way we can simply print a Scope object and see all of the bindings in that scope.
+We also made more of an attempt to stay organized instead of using one large method for most of the implementation.
+
+A big improvement over the last project was leveraging the return type of the visit methods to pass objects up to parent visit functions. In the last project the JudgementPass was of type Void, where it would have been beneficial if it was of type Type so that the type of child nodes could be accessed by parents. Instead we create a typeOf method that recursively determined the type of expressions based on their children's type. This made using the visit methods kind of pointless since these helper functions
+
 
 ### Issues Encountered
-The biggest issue for the project is the lack of feedback in comparison to the last two. For this project there are no test cases provided, no print output, and no solution to judge the validity of our project with, and given the nature of this project, bugs can be caused by an uncaught error from any part of the program which made it very difficult to work on. We did appreciate that the passes we needed to implement and the methods to override where clearly defined, which was a great improvement over the previous assignments where the exact items needing to be implemented was not clearly laid out.
+One of the big issues with this projects was the ir.java and the GOTO classes. Since ir.java is not a class file, but a file full of classes, they all have default visibility meaning they can only be accessed from the CodeGen package. It also made it hard to import them, especially when working with AST nodes since there are a lot of duplicate class names across the AST, TypeCheck, and GOTO classes.
 
-There was also what felt like a lot of duplicate code writing, every function overload for the passes means reimplementing the scope switching, with some passes made up of mostly duplicated code. We did implement a scope switch wrapper function to reduce code duplication and make this less annoying.
+We created a ProgramManager class as a way to access the program object from main and to hold any methods to print out, write, or compile our code using the emitter.

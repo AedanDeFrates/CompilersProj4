@@ -1,9 +1,9 @@
-//var int test = 67;
+fun int num() {
+    return 42;
+}
 
-fun int main(){
-    var int x = 0;
-    var string s = "Hello World!";
-    //var int[] arr;
-    x = x + 1;
-    return x;
+fun int main() {
+    var int x = num() + 4;
+    printf("%d\n", x);
+    return 0;
 }
