@@ -358,6 +358,29 @@ public class InstructionsPass extends CodeGenPass<Object>{
 
         String name = ((ID) node.name).value;
 
+        if ("input".equals(name)) {
+            String tmpName = pm.program.getUniqueVarName();
+            Var tmpVar = new Var(tmpName, Type.INT);
+            pm.program.globals.add(tmpVar);
+            addInst(new Input(tmpVar));
+            return tmpVar;
+        }
+
+        if ("readFromFile".equals(name)) {
+            IRExpr filename = (IRExpr) visit(node.params.list.get(0));
+            String tmpName = pm.program.getUniqueVarName();
+            Var tmpVar = new Var(tmpName, Type.STRING);
+            pm.program.globals.add(tmpVar);
+            addInst(new ReadFromFile(tmpVar, filename));
+            return tmpVar;
+        }
+
+        if ("writeToFile".equals(name)) {
+            IRExpr filename = (IRExpr) visit(node.params.list.get(0));
+            IRExpr content  = (IRExpr) visit(node.params.list.get(1));
+            return new WriteToFile(filename, content);
+        }
+
         if ("printf".equals(name))
         {
             IRExpr formatExpr = (IRExpr) visit(node.params.list.get(0));

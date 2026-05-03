@@ -8,9 +8,13 @@ import Absyn.IfStmt;
 import Absyn.WhileStmt;
 
 // This pass implements the type rules.
+// Builtins registered here are variadic — skip strict param count check.
 // Some of the logic has been implemented for you in the Types.
 // Check out the "canAccept" functions.
 public class JudgementsPass extends ScopePass<Void> {
+
+   private static final java.util.Set<String> VARIADIC_BUILTINS = java.util.Set.of("printf");
+
    public JudgementsPass(Scope s) {
       super(s);
    }
@@ -204,7 +208,7 @@ public class JudgementsPass extends ScopePass<Void> {
          LIST formals = fs.params;
          Type retType = fs.returnType;
 
-         if (!formals.canAccept(actuals)) {
+         if (!VARIADIC_BUILTINS.contains(fname) && !formals.canAccept(actuals)) {
             throw new TypeCheckException(
                     "Function call arguments don't match the parameters for '" + fname + "'"
             );

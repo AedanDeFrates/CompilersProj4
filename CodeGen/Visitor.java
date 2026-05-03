@@ -15,6 +15,9 @@ public interface Visitor<T> {
     T visitLabel(Label instr);
     T visitReturnStmt(ReturnStmt instr);
     T visitPrintf(Printf instr);
+    T visitInput(Input instr);
+    T visitReadFromFile(ReadFromFile instr);
+    T visitWriteToFile(WriteToFile instr);
     T visitGOTO(GOTO instr);
 
     T visitFunStmt(FunStmt instr);
