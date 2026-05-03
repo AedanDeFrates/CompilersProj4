@@ -1,5 +1,6 @@
 package CodeGen;
 import java.io.FileWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
@@ -12,9 +13,17 @@ public class ProgramManager {
     public Emitter.ProgramEmitter emitter;
     public HashMap<String,String> varNameTranslator;
 
+    // Maps function name -> ordered list of unique global var names for its parameters
+    public HashMap<String, ArrayList<String>> funcParamVarNames;
+
+    // Maps array's unique var name -> size-tracker unique var name
+    public HashMap<String, String> arraySizeVarNames;
+
     public ProgramManager(){
         this.program = new Program();
         this.varNameTranslator  = new HashMap<>();
+        this.funcParamVarNames = new HashMap<>();
+        this.arraySizeVarNames = new HashMap<>();
         this.emitter = new Emitter.ProgramEmitter(program.globals,program.funcs);
     }
 

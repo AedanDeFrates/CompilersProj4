@@ -163,6 +163,16 @@ public class JudgementsPass extends ScopePass<Void> {
          return expType;
       }
 
+      // Array indexing evaluates to the element type (INT for int[])
+      if (e instanceof Absyn.ArrayExp) {
+         Absyn.ArrayExp ae = (Absyn.ArrayExp) e;
+         Type arrType = typeOf(ae.name);
+         if (arrType instanceof ARRAY) {
+            return ((ARRAY) arrType).type;
+         }
+         return new INT();
+      }
+
       //Rule 9: function application must match parameter type and evaluate to expression of the return type
       if (e instanceof Absyn.FunExp){
          Absyn.FunExp f = (Absyn.FunExp) e;

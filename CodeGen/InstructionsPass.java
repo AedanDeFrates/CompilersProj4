@@ -87,6 +87,16 @@ public class InstructionsPass extends CodeGenPass<Object>{
         return var;
     }
 
+    // returns a Var from the program given its unique (mangled) name
+    Var findVarByUniqueName(String uniqueName){
+        for(Var v : pm.program.globals){
+            if(v.name.equals(uniqueName)){
+                return v;
+            }
+        }
+        throw new RuntimeException("Can't find var with unique name " + uniqueName);
+    }
+
     // returns a Function from the program given its name
     Function findFunc(String name){
         Function func = null;
@@ -212,16 +222,45 @@ public class InstructionsPass extends CodeGenPass<Object>{
     @Override
     public Object visitAssignExp(AssignExp node) {
         System.out.println("INSTRUCTION_PASS visitAssignExp\n   " + "assign");
-        // for now assume visit(node.left) will always return a Var,
-        // in theory compiler should be enforcing this beforehand
-        // but this has not been tested and checks may be necessary
-        Var var =  (Var)visit(node.left);
-        IRExpr exp = (IRExpr)visit(node.right);
 
+        if (node.left instanceof ArrayExp) {
+            ArrayExp ae = (ArrayExp) node.left;
+            Var arrayVar = (Var) visit(ae.name);
+            IRExpr index = (IRExpr) visit(ae.index_list.list.get(0));
+            IRExpr value = (IRExpr) visit(node.right);
 
-        Assign assign = new Assign(var,exp);
+            // Create a temp global to hold the index (avoids double-evaluation)
+            String tempName = pm.program.getUniqueVarName();
+            Var tempIndex = new Var(tempName, Type.INT);
+            pm.program.globals.add(tempIndex);
+            addInst(new Assign(tempIndex, index));
+
+            // Bounds check: if (tempIndex >= sizeVar) realloc and update size
+            String sizeUniqueName = pm.arraySizeVarNames.get(arrayVar.name);
+            if (sizeUniqueName != null) {
+                Var sizeVar = findVarByUniqueName(sizeUniqueName);
+                String resizeLabel = "RESIZE_" + pm.program.getUniqueLabelName();
+                String noResizeLabel = "NORESIZE_" + pm.program.getUniqueLabelName();
+
+                IRExpr outOfBounds = new CodeGen.BinOp(">=", tempIndex, sizeVar, Type.INT);
+                addInst(new CodeGen.IfStmt(outOfBounds, resizeLabel, noResizeLabel));
+
+                addInst(new Label(resizeLabel));
+                IRExpr newSize = new CodeGen.BinOp("+", tempIndex, new Literal(1, Type.INT), Type.INT);
+                addInst(new ArrayAlloc(arrayVar, newSize));
+                addInst(new Assign(sizeVar, new CodeGen.BinOp("+", tempIndex, new Literal(1, Type.INT), Type.INT)));
+
+                addInst(new Label(noResizeLabel));
+            }
+
+            addInst(new ArrayStore(arrayVar, tempIndex, value));
+            return null;
+        }
+
+        Var var = (Var) visit(node.left);
+        IRExpr exp = (IRExpr) visit(node.right);
+        Assign assign = new Assign(var, exp);
         addInst(assign);
-
         return assign;
     }
 
@@ -306,13 +345,21 @@ public class InstructionsPass extends CodeGenPass<Object>{
 
 
     @Override
+    public Object visitArrayExp(ArrayExp node) {
+        System.out.println("INSTRUCTION_PASS visitArrayExp");
+        Var arrayVar = (Var) visit(node.name);
+        IRExpr index = (IRExpr) visit(node.index_list.list.get(0));
+        return new ArrayLoad(arrayVar, index, Type.INT);
+    }
+
+    @Override
     public Object visitFunExp(FunExp node) {
         System.out.println("INSTRUCTION_PASS visitFunExp\n   " + "function call");
-    
+
         String name = ((ID) node.name).value;
-    
-        if ("printf".equals(name)) 
-        {   
+
+        if ("printf".equals(name))
+        {
             IRExpr formatExpr = (IRExpr) visit(node.params.list.get(0));
             String format = (String) ((Literal) formatExpr).value;
 
@@ -321,14 +368,23 @@ public class InstructionsPass extends CodeGenPass<Object>{
             {
                 args.add((IRExpr) visit(node.params.list.get(i)));
             }
-            
+
             return new Printf(format, args);
         }
         else
         {
+            // Pre-assign arguments to the function's parameter global variables
+            ArrayList<String> paramNames = pm.funcParamVarNames.get(name);
+            if (paramNames != null && node.params != null) {
+                for (int i = 0; i < node.params.list.size() && i < paramNames.size(); i++) {
+                    IRExpr argExpr = (IRExpr) visit(node.params.list.get(i));
+                    Var paramVar = findVarByUniqueName(paramNames.get(i));
+                    addInst(new Assign(paramVar, argExpr));
+                }
+            }
+
             Type returnType = Type.INT;
             Call c = new Call(name, returnType);
-
             return c;
         }
     }
