@@ -54,7 +54,7 @@ Instructions:
 11. ArrayLoad
 12. ArrayAllocation
 13. ArrayStore
-14. Builtin
+14. Builtin (Print, Input, Readfromfile, writetofile)
 
 In this IR, all variable declarations will be global, Control flow is implemented with goto statements and labels, and the only types are int, string, and int array.
 
@@ -73,6 +73,8 @@ This pass visits all function declarations and creates the corresponding GOTO Fu
 This pass visits the rest of our AST nodes to add instructions to their corresponding functions. It stores a reference to the current Function. When visiting a function it switches the current function, visits its children, and restores the previous function.
 
 Each visit method returns its resulting GOTO object, if one is created, so that they can be retrieved by their parent node. Only statements, those ending in semicolons, need to be added as instructions to the functions, but these statements may be made up of multiple GOTO instructions. An assign statement may be made of multiple binary operations for example.
+
+For our built in functions, we manually added these to our global scope before typechecking. This prevents function declarations with the same name as our builts in being created, and allows call to these functions without declarations. 
 
 
 
