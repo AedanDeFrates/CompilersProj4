@@ -2,6 +2,10 @@ package CodeGen;
 import java.util.ArrayList;
 import java.util.List;
 
+/*
+This class converts the GOTO IR into C code
+uses the visitor pattern to translate the IR nodes into C syntax
+ */
 public class Emitter {
 
     public static class ProgramEmitter {

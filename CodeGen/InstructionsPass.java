@@ -10,8 +10,24 @@ import Absyn.IfStmt;
 import Typecheck.SymbolTable.Scope;
 
 //This pass creates all the functions and their instructions in the GOTO ir
+/*
+The MAIN lowering pass of the compiler.
+Takes the type-checked AST and converts it into GOTO-style Intermediate Representation
+
+Higher level contructs like if, while, arrays, function calls
+are lowered into simpler instructions using: labels, gotos, assignments
+
+expressions -> IR expressions
+statements -? IR instruction
+adds instructions to current function
+
+all variables are global,
+variable lookup uses ProgramManager mappings
+
+ */
 public class InstructionsPass extends CodeGenPass<Object>{
 
+    //tracks which function we are currently generating instructions for
     Function currentFunc;
 
     public InstructionsPass(ProgramManager p, Scope s) {
@@ -56,7 +72,8 @@ public class InstructionsPass extends CodeGenPass<Object>{
     }
      */
 
-    //adds instruction to the current function
+    //adds GOTO instruction to the current function
+    //safety check: cannot add null instructions or add instructions outside of a function
     void addInst(GOTO inst){
         if(inst==null){
             throw new RuntimeException("Cannot add null instruction to function");
@@ -166,6 +183,7 @@ public class InstructionsPass extends CodeGenPass<Object>{
         return lit;
     }
 
+    // converts a binary expression into a GOTO IR BinOp node
     @Override
     public Object visitBinOp(BinOp node) {
         System.out.println("INSTRUCTION_PASS visitBinaryOp\n   " + node.oper);
@@ -185,6 +203,11 @@ public class InstructionsPass extends CodeGenPass<Object>{
         return un;
     }
 
+    /*
+    handles variable declarations
+    variable was already created in GlobalVariablePass
+    so this handles initialization
+     */
     @Override
     public Object visitVarDecl(VarDecl node) {
         System.out.println("INSTRUCTION_PASS visitVarDecl\n   " + node.name);
@@ -219,6 +242,9 @@ public class InstructionsPass extends CodeGenPass<Object>{
         }
     }
 
+    /*
+    handles assignments: normal assignment and array assignment
+     */
     @Override
     public Object visitAssignExp(AssignExp node) {
         System.out.println("INSTRUCTION_PASS visitAssignExp\n   " + "assign");
@@ -273,6 +299,20 @@ public class InstructionsPass extends CodeGenPass<Object>{
         return re;
     }
 
+    /*
+    Lower if statement into GOTO form
+    Example: if (cond) {A} else {B}
+    Becomes: if (cond) goto TRUE
+                       goto FALSE
+            TRUE:
+            A
+            goto END
+
+            FALSE:
+            B
+
+            END:
+     */
     @Override
     public Object visitIfStmt(IfStmt node) {
         System.out.println("INSTRUCTION_PASS visitIfStmt\n   " + "if statement");
@@ -302,6 +342,21 @@ public class InstructionsPass extends CodeGenPass<Object>{
         return null;
     }
 
+    /*
+    Lowers while loop into GOTO form
+
+    Example: while (cond) {body}
+    Becomes:
+            START:
+            if (cond) goto BODY
+            goto END
+
+            BODY:
+                body
+                goto START
+
+            END:
+     */
     @Override
     public Object visitWhileStmt(WhileStmt node) {
         System.out.println("INSTRUCTION_PASS visitWhileStmt\n   " + "while statement");
@@ -327,6 +382,10 @@ public class InstructionsPass extends CodeGenPass<Object>{
         return null;
     }
 
+    /*
+    Handles expression statements: printf(), function calls, writeToFile()
+    converts expression into executable IR statement
+     */
     @Override
     public Object visitExprStmt(ExprStmt node) {
         System.out.println("INSTRUCTION_PASS visitExprStmt\n   " + "expression statement");
@@ -337,13 +396,16 @@ public class InstructionsPass extends CodeGenPass<Object>{
             FunStmt fs = new FunStmt(((Call) result).func);
             addInst(fs);
         }
+        else if (result instanceof Printf){
+            addInst((Printf)result);
+        }
         else if (result instanceof IRStmt) {
-            addInst((IRStmt) result);
+            addInst((WriteToFile) result);
         }
         return result;
     }
 
-
+    // handle array access (arr[i])
     @Override
     public Object visitArrayExp(ArrayExp node) {
         System.out.println("INSTRUCTION_PASS visitArrayExp");
@@ -352,12 +414,18 @@ public class InstructionsPass extends CodeGenPass<Object>{
         return new ArrayLoad(arrayVar, index, Type.INT);
     }
 
+    /*
+    handles function calls
+    handles built-in functions: input(), readFromFile(), writeToFile(), printf()
+     */
     @Override
     public Object visitFunExp(FunExp node) {
         System.out.println("INSTRUCTION_PASS visitFunExp\n   " + "function call");
 
         String name = ((ID) node.name).value;
 
+        //creates a temp variable to store input
+        //emits input instruction
         if ("input".equals(name)) {
             String tmpName = pm.program.getUniqueVarName();
             Var tmpVar = new Var(tmpName, Type.INT);
@@ -366,6 +434,7 @@ public class InstructionsPass extends CodeGenPass<Object>{
             return tmpVar;
         }
 
+        // reads file content into temp string var
         if ("readFromFile".equals(name)) {
             IRExpr filename = (IRExpr) visit(node.params.list.get(0));
             String tmpName = pm.program.getUniqueVarName();
@@ -375,6 +444,7 @@ public class InstructionsPass extends CodeGenPass<Object>{
             return tmpVar;
         }
 
+        //writes content to file (handled in emitter)
         if ("writeToFile".equals(name)) {
             IRExpr filename = (IRExpr) visit(node.params.list.get(0));
             IRExpr content  = (IRExpr) visit(node.params.list.get(1));

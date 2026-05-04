@@ -13,6 +13,7 @@ import java.util.HashMap;
 // using Program.getUniqueVarName()
 public class GlobalVariablePass extends CodeGenPass<Void>{
 
+    //tracks the function we are currently visiting
     private String currentFuncName = null;
 
     public GlobalVariablePass(ProgramManager p, Scope s) {
@@ -22,7 +23,8 @@ public class GlobalVariablePass extends CodeGenPass<Void>{
     // Maps each TypeCheck.Type to a CodeGen.Type
     private CodeGen.Type getGOTOType(Typecheck.Types.Type type){
 
-        //I'M NOT SURE WHAT THE TYPES SHOULD BE FOR SOME OF THESE
+        //Converts the typechecker's type system into the GOTO type
+        //system. GOTO only has INT, STRING, and INTARRAY
         return switch(type){
             case Typecheck.Types.VOID t -> CodeGen.Type.INT;
             case Typecheck.Types.POINTER t -> Type.INT;
@@ -36,7 +38,7 @@ public class GlobalVariablePass extends CodeGenPass<Void>{
         };
     }
 
-    //Create the global varialbes in the program, all with unique names
+    //Create the global variables in the program, all with unique names
     //Adds a mappings of old var names to their new unique one
     private void createGOTOVar(String name,Typecheck.Types.Type type){
 
@@ -49,7 +51,13 @@ public class GlobalVariablePass extends CodeGenPass<Void>{
         pm.program.globals.add(v);
     }
 
-
+/*
+called when visiting a function declaration node in the AST.
+Sets the current function context, initializes storage for its parameters,
+then visits the function’s type, parameters, and body to create global
+variables (with unique names) for everything inside the function.
+Restores the previous function context afterward.
+ */
     @Override
     public Void visitFunDecl(FunDecl node) {
         System.out.println("GLOBAL_VARIABLE_PASS visitFunDecl\n   " + node.name);
@@ -66,7 +74,13 @@ public class GlobalVariablePass extends CodeGenPass<Void>{
         currentFuncName = prevFuncName;
         return null;
     }
+/*
+called when visiting a variable declaration in the AST
+creates a global variable with a unique name
 
+if the variable is an array,
+it also creates another global variable to track the size
+ */
     @Override
     public Void visitVarDecl(VarDecl node){
         System.out.println("GLOBAL_VARIABLE_PASS visitVarDecl\n   " + node.name);
@@ -84,6 +98,10 @@ public class GlobalVariablePass extends CodeGenPass<Void>{
         return null;
     }
 
+    /*
+    creates a global variable for each parameter
+    remembers which parameters belong to each function
+     */
     @Override
     public Void visitParameter(Parameter node){
         System.out.println("GLOBAL_VARIABLE_PASS visitParameter\n   " + node.name);
@@ -98,6 +116,9 @@ public class GlobalVariablePass extends CodeGenPass<Void>{
         return null;
     }
 
+    /*
+    handles struct members converting them into global variables with unique names
+     */
     @Override
     public Void visitStructMember(StructMember node){
 
@@ -106,6 +127,10 @@ public class GlobalVariablePass extends CodeGenPass<Void>{
         return null;
     }
 
+    /*
+    called when visiting a union member in the AST
+    handles union members converting them into global variables with unique names
+     */
     @Override
     public Void visitUnionMember(UnionMember node){
 
