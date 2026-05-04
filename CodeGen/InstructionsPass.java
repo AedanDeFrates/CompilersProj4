@@ -392,14 +392,14 @@ public class InstructionsPass extends CodeGenPass<Object>{
 
         Object result = visit(node.expression);
         
-        if (result instanceof Call) {
-            FunStmt fs = new FunStmt(((Call) result).func);
+        if (result instanceof Call c) {
+            FunStmt fs = new FunStmt(c.func);
             addInst(fs);
         }
         else if (result instanceof Printf){
             addInst((Printf)result);
         }
-        else if (result instanceof IRStmt) {
+        else if (result instanceof WriteToFile) {
             addInst((WriteToFile) result);
         }
         return result;
